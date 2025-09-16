@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  shell:
+    build:
+      context: ./apps/shell
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_GRAPHQL_ENDPOINT=${AWS_API_GATEWAY_URL}/graphql
+    networks:
+      - app-network
+
+  # No backend service - uses AWS Lambda instead
+  # No dynamodb service - uses AWS DynamoDB instead
+  # No dynamo-admin service - not needed for AWS
+
+networks:
+  app-network:
+    driver: bridge

@@ -55,6 +55,22 @@ Endpoints:
 ### DynamoDB Persistence
 The `dynamodb` service uses a volume: `./data/dynamodb:/home/dynamodblocal/data`. Your tables and items persist across restarts. Avoid `docker-compose down -v` if you want to retain data.
 
+## Switching between Local and AWS
+
+You can switch environments with one command:
+
+```bash
+# Local Docker stack (frontend + backend + DynamoDB Local)
+npm run switch:local
+
+# AWS (frontend locally, backend on AWS Lambda via API Gateway)
+npm run switch:aws
+```
+
+What these do:
+- `switch:local`: starts Docker services, waits briefly, then seeds DynamoDB Local
+- `switch:aws`: deploys Terraform in `infrastructure`, sets frontend `VITE_GRAPHQL_ENDPOINT` to the API Gateway URL, and starts only the shell container
+
 ## Seeding Data
 
 We include seeds for the dashboard stats and a couple of users.

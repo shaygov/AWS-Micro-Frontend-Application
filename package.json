@@ -25,7 +25,9 @@
     "stop": "docker-compose down",
     "terraform:init": "cd infrastructure && terraform init",
     "terraform:plan": "cd infrastructure && terraform plan",
-    "terraform:apply": "cd infrastructure && terraform apply"
+    "terraform:apply": "cd infrastructure && terraform apply",
+    "switch:aws": "bash scripts/switch-to-aws.sh",
+    "switch:local": "bash scripts/switch-to-local.sh"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
