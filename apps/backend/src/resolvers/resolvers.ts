@@ -15,6 +15,13 @@ export const resolvers = {
     dashboardStats: async () => {
       return await dashboardService.getDashboardStats()
     },
+    usersWithDashboard: async () => {
+      const [users, dashboard] = await Promise.all([
+        userService.getAllUsers(),
+        dashboardService.getDashboardStats(),
+      ])
+      return { users, dashboard }
+    },
   },
   Mutation: {
     createUser: async (_: any, { input }: { input: any }) => {
@@ -25,6 +32,11 @@ export const resolvers = {
     },
     deleteUser: async (_: any, { id }: { id: string }) => {
       return await userService.deleteUser(id)
+    },
+  },
+  User: {
+    dashboard: async (parent: any) => {
+      return await dashboardService.getDashboardStatsByUser(parent.id)
     },
   },
 }

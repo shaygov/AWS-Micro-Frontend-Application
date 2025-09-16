@@ -1,7 +1,7 @@
 import styled from 'styled-components'
-import { useQuery } from '@apollo/client'
+import { useQuery, useMutation } from '@apollo/client'
 import { client } from '../shared/apollo'
-import { GET_USERS } from '../shared/graphql/queries'
+import { GET_USERS, CREATE_USER } from '../shared/graphql/queries'
 
 const Container = styled.div`
   max-width: 1200px;
@@ -12,6 +12,29 @@ const Title = styled.h1`
   color: #2c3e50;
   margin-bottom: 2rem;
   font-size: 2.5rem;
+`
+
+const Form = styled.form`
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+`
+
+const Input = styled.input`
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #dcdfe3;
+  border-radius: 6px;
+  outline: none;
+`
+
+const Button = styled.button`
+  padding: 0.6rem 1rem;
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 `
 
 const Table = styled.table`
@@ -65,7 +88,18 @@ const LoadingMessage = styled.div`
 `
 
 export default function Users() {
-  const { data, loading, error } = useQuery(GET_USERS, { client })
+  const { data, loading, error, refetch } = useQuery(GET_USERS, { client })
+  const [createUser, { loading: creating }] = useMutation(CREATE_USER, { client })
+  const onSubmit: React.FormEventHandler<HTMLFormElement> = async (e: any) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    const name = (form.elements.namedItem('name') as HTMLInputElement).value.trim()
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim()
+    if (!name || !email) return
+    await createUser({ variables: { input: { name, email } } })
+    form.reset()
+    await refetch()
+  }
 
   if (loading) return <LoadingMessage>Loading users...</LoadingMessage>
   if (error) return <LoadingMessage>Error loading users</LoadingMessage>
@@ -75,6 +109,11 @@ export default function Users() {
   return (
     <Container>
       <Title>Users</Title>
+      <Form onSubmit={onSubmit}>
+        <Input name="name" placeholder="Name" />
+        <Input type="email" name="email" placeholder="Email" />
+        <Button type="submit" disabled={creating}>Add User</Button>
+      </Form>
       <Table>
         <thead>
           <tr>

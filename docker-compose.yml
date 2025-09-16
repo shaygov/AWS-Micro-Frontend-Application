@@ -23,8 +23,7 @@ services:
     environment:
       - NODE_ENV=development
       - REGION=us-east-1
-      - USERS_TABLE=aws-micro-frontend-backend-users-local
-      - DASHBOARD_TABLE=aws-micro-frontend-backend-dashboard-local
+      - TABLE_NAME=aws-micro-frontend-backend-main-local
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
       - AWS_DEFAULT_REGION=us-east-1

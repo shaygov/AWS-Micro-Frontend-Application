@@ -1,24 +1,31 @@
-import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import { docClient } from '../context/context'
 import { mockUsers } from '../data/mockData'
 
 export class UserService {
-  private tableName = process.env.USERS_TABLE || 'users'
+  private tableName = process.env.TABLE_NAME || 'aws-micro-frontend-backend-main-dev'
 
   async getAllUsers() {
     try {
+      // In single-table design, list all users by scanning for SK = 'PROFILE'.
+      // For production, consider maintaining an indexable marker to allow Query.
       const command = new ScanCommand({
         TableName: this.tableName,
+        FilterExpression: '#sk = :sk',
+        ExpressionAttributeNames: { '#sk': 'SK' },
+        ExpressionAttributeValues: { ':sk': 'PROFILE' },
       })
       
       const response = await docClient.send(command)
       const items = (response.Items || []) as any[]
       const normalized = items.map((item) => ({
-        ...item,
+        id: item.userId || item.id?.replace('USER#', ''),
+        name: item.name,
+        email: item.email,
+        status: item.status ?? 'ACTIVE',
         createdAt: item.createdAt ?? new Date().toISOString(),
         updatedAt: item.updatedAt ?? new Date().toISOString(),
-        status: item.status ?? 'ACTIVE',
       }))
       return normalized
     } catch (error: unknown) {
@@ -32,14 +39,16 @@ export class UserService {
     try {
       const command = new GetCommand({
         TableName: this.tableName,
-        Key: { id },
+        Key: { PK: `USER#${id}`, SK: 'PROFILE' },
       })
       
       const response = await docClient.send(command)
       const item: any = response.Item
       if (!item) return null
       return {
-        ...item,
+        id,
+        name: item.name,
+        email: item.email,
         createdAt: item.createdAt ?? new Date().toISOString(),
         updatedAt: item.updatedAt ?? new Date().toISOString(),
         status: item.status ?? 'ACTIVE',
@@ -64,10 +73,22 @@ export class UserService {
 
       const command = new PutCommand({
         TableName: this.tableName,
-        Item: user,
+        Item: {
+          PK: `USER#${user.id}`,
+          SK: 'PROFILE',
+          GSI1PK: `EMAIL#${user.email}`,
+          GSI1SK: `USER#${user.id}`,
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          status: user.status,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+        ConditionExpression: 'attribute_not_exists(PK) AND attribute_not_exists(GSI1PK)'
       })
       
-        await docClient.send(command)
+      await docClient.send(command)
       return user
     } catch (error) {
       console.error('Error creating user:', error)
@@ -104,7 +125,7 @@ export class UserService {
 
       const command = new UpdateCommand({
         TableName: this.tableName,
-        Key: { id },
+        Key: { PK: `USER#${id}`, SK: 'PROFILE' },
         UpdateExpression: `SET ${updateExpression.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
@@ -114,7 +135,9 @@ export class UserService {
       const response = await docClient.send(command)
       const updated = response.Attributes as any
       return {
-        ...updated,
+        id,
+        name: updated?.name,
+        email: updated?.email,
         createdAt: updated?.createdAt ?? new Date().toISOString(),
         updatedAt: updated?.updatedAt ?? new Date().toISOString(),
         status: updated?.status ?? 'ACTIVE',
@@ -129,7 +152,7 @@ export class UserService {
     try {
       const command = new DeleteCommand({
         TableName: this.tableName,
-        Key: { id },
+        Key: { PK: `USER#${id}`, SK: 'PROFILE' },
       })
       
       await docClient.send(command)
@@ -137,6 +160,32 @@ export class UserService {
     } catch (error) {
       console.error('Error deleting user:', error)
       throw new Error('Failed to delete user')
+    }
+  }
+
+  async getUserByEmail(email: string) {
+    try {
+      const command = new QueryCommand({
+        TableName: this.tableName,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :g1pk',
+        ExpressionAttributeValues: { ':g1pk': `EMAIL#${email}` },
+        Limit: 1,
+      })
+      const response = await docClient.send(command)
+      const item: any = response.Items?.[0]
+      if (!item) return null
+      return {
+        id: item.userId,
+        name: item.name,
+        email: item.email,
+        status: item.status ?? 'ACTIVE',
+        createdAt: item.createdAt ?? new Date().toISOString(),
+        updatedAt: item.updatedAt ?? new Date().toISOString(),
+      }
+    } catch (error) {
+      console.error('Error getting user by email:', error)
+      return null
     }
   }
 }

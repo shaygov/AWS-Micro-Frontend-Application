@@ -3,14 +3,14 @@ import { docClient } from '../context/context'
 import { mockDashboardStats } from '../data/mockData'
 
 export class DashboardService {
-  private tableName = process.env.DASHBOARD_TABLE || 'dashboard'
+  private tableName = process.env.TABLE_NAME || 'aws-micro-frontend-backend-main-dev'
 
   async getDashboardStats() {
     try {
 
       const command = new GetCommand({
         TableName: this.tableName,
-        Key: { id: 'stats' },
+        Key: { PK: 'DASHBOARD#GLOBAL', SK: 'STATS' },
       });
       
       const response = await docClient.send(command)
@@ -20,7 +20,6 @@ export class DashboardService {
       }
 
       const defaultStats = {
-        id: 'stats',
         totalUsers: 0,
         activeUsers: 0,
         totalOrders: 0,
@@ -37,11 +36,36 @@ export class DashboardService {
     }
   }
 
+  async getDashboardStatsByUser(userId: string) {
+    try {
+      
+      const command = new GetCommand({
+        TableName: this.tableName,
+        Key: { PK: `USER#${userId}`, SK: 'DASHBOARD#STATS' },
+      })
+
+      const response = await docClient.send(command)
+      
+      if (response.Item) {
+        return response.Item
+      }
+
+      // Fallback to global stats if per-user not found
+      return await this.getDashboardStats()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('DynamoDB not available, using mock data:', message)
+      return mockDashboardStats
+    }
+  }
+
   async updateStats(stats: any) {
     try {
       const command = new PutCommand({
         TableName: this.tableName,
         Item: {
+          PK: 'DASHBOARD#GLOBAL',
+          SK: 'STATS',
           ...stats,
           lastUpdated: new Date().toISOString(),
         },

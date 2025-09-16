@@ -10,8 +10,7 @@ provider:
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
-    USERS_TABLE: ${self:service}-users-${self:provider.stage}
-    DASHBOARD_TABLE: ${self:service}-dashboard-${self:provider.stage}
+    TABLE_NAME: ${self:service}-main-${self:provider.stage}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -22,7 +21,8 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource:
-        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:service}-*"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TABLE_NAME}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TABLE_NAME}/index/*"
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
@@ -61,42 +61,43 @@ custom:
 
 resources:
   Resources:
-    UsersTable:
+    MainTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.USERS_TABLE}
+        TableName: ${self:provider.environment.TABLE_NAME}
         AttributeDefinitions:
-          - AttributeName: id
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: PK
             KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
         StreamSpecification:
           StreamViewType: NEW_AND_OLD_IMAGES
-
-    DashboardTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.environment.DASHBOARD_TABLE}
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        BillingMode: PAY_PER_REQUEST
 
   Outputs:
     GraphQLEndpoint:
       Value: !GetAtt GraphqlLambdaFunction.Arn
       Export:
         Name: ${self:service}-${self:provider.stage}-graphql-endpoint
-    UsersTableName:
-      Value: !Ref UsersTable
+    MainTableName:
+      Value: !Ref MainTable
       Export:
-        Name: ${self:service}-${self:provider.stage}-users-table
-    DashboardTableName:
-      Value: !Ref DashboardTable
-      Export:
-        Name: ${self:service}-${self:provider.stage}-dashboard-table
+        Name: ${self:service}-${self:provider.stage}-main-table

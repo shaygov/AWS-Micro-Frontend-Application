@@ -6,6 +6,7 @@ export const typeDefs = `#graphql
     status: UserStatus!
     createdAt: String!
     updatedAt: String
+    dashboard: DashboardStats!
   }
 
   enum UserStatus {
@@ -19,6 +20,11 @@ export const typeDefs = `#graphql
     activeUsers: Int!
     totalOrders: Int!
     revenue: Float!
+  }
+
+  type UsersWithDashboard {
+    users: [User!]!
+    dashboard: DashboardStats!
   }
 
   input CreateUserInput {
@@ -36,6 +42,7 @@ export const typeDefs = `#graphql
     users: [User!]!
     user(id: ID!): User
     dashboardStats: DashboardStats!
+    usersWithDashboard: UsersWithDashboard!
   }
 
   type Mutation {

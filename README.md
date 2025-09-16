@@ -11,7 +11,7 @@ A modern, scalable micro-frontend application built with React, GraphQL and Dock
 
 ### Backend
 - Apollo Server (Node.js/Express)
-- DynamoDB (via AWS SDK v3)
+- DynamoDB single-table design (via AWS SDK v3)
 
 ### DevOps
 - Docker Compose (local, multi-container)
@@ -23,6 +23,7 @@ A modern, scalable micro-frontend application built with React, GraphQL and Dock
 ├── apps/
 │   ├── shell/              # React shell (served via Vite preview in container)
 │   └── backend/            # GraphQL API
+│       └── scripts/        # Utilities (e.g. migrate-to-single-table)
 ├── apps/dynamo-admin/      # Dockerized DynamoDB Admin UI
 ├── data/dynamodb/          # Persistent DynamoDB Local data (created at runtime)
 ├── seeds/                  # Seed JSON files for DynamoDB
@@ -73,33 +74,60 @@ What these do:
 
 ## Seeding Data
 
-We include seeds for the dashboard stats and a couple of users.
+With the new single-table, you can either run the migration (recommended) or seed fresh data.
+
+### Option A: Migrate existing local data (old tables → single table)
+
+Run from `apps/backend`:
+```bash
+npm run migrate:single-table
+```
+This reads from old tables (`<service>-users-<stage>`, `<service>-dashboard-<stage>`) and writes into the new table `<service>-main-<stage>` using PK/SK and `GSI1`.
+
+### Option B: Seed fresh data (DynamoDB Local)
 
 1) Ensure `dynamodb` and `dynamo-admin` are running:
 ```bash
 docker-compose up -d dynamodb dynamo-admin
 ```
 
-2) From PowerShell, run (Windows path-safe volume mount):
+2) From PowerShell, put initial items directly into the new single table (replace table name if your stage differs):
 ```powershell
 $P = (Get-Location).Path
-# Dashboard stats
+# Global dashboard stats (PK=DASHBOARD#GLOBAL, SK=STATS)
 docker run --rm -v ${P}:/data --network awsapp_app-network `
   -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy -e AWS_DEFAULT_REGION=us-east-1 `
   amazon/aws-cli dynamodb put-item `
-  --table-name aws-micro-frontend-backend-dashboard-local `
-  --item file:///data/seeds/dashboard-item.json `
+  --table-name aws-micro-frontend-backend-main-local `
+  --item '{"PK":{"S":"DASHBOARD#GLOBAL"},"SK":{"S":"STATS"},"totalUsers":{"N":"0"},"activeUsers":{"N":"0"},"totalOrders":{"N":"0"},"revenue":{"N":"0"}}' `
   --endpoint-url http://dynamodb:8000 --region us-east-1
 
-# Users
-docker run --rm -v ${P}:/data --network awsapp_app-network `
+# Example user (PK=USER#<id>, SK=PROFILE, GSI1PK=EMAIL#<email>)
+$uid = [guid]::NewGuid().ToString()
+docker run --rm --network awsapp_app-network `
   -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy -e AWS_DEFAULT_REGION=us-east-1 `
-  amazon/aws-cli dynamodb batch-write-item `
-  --request-items file:///data/seeds/users-items.json `
+  amazon/aws-cli dynamodb put-item `
+  --table-name aws-micro-frontend-backend-main-local `
+  --item '{"PK":{"S":"USER#'"$uid"'"},"SK":{"S":"PROFILE"},"GSI1PK":{"S":"EMAIL#demo@example.com"},"GSI1SK":{"S":"USER#'"$uid"'"},"userId":{"S":"'"$uid"'"},"name":{"S":"Demo User"},"email":{"S":"demo@example.com"}}' `
   --endpoint-url http://dynamodb:8000 --region us-east-1
 ```
 
 3) Verify in DynamoDB Admin: http://localhost:8001
+
+## Data Model (Single-table)
+
+- Table: `<service>-main-<stage>` (env: `TABLE_NAME`)
+- Primary key: `PK` (partition), `SK` (sort)
+- Global Secondary Index: `GSI1` with keys `GSI1PK`, `GSI1SK`
+
+Entities:
+- Users: `PK=USER#<userId>`, `SK=PROFILE`, `GSI1PK=EMAIL#<email>`, `GSI1SK=USER#<userId>`
+- Global dashboard: `PK=DASHBOARD#GLOBAL`, `SK=STATS`
+- Per-user dashboard (optional): `PK=USER#<userId>`, `SK=DASHBOARD#STATS`
+
+Notes:
+- Use `Query` on `GSI1` to fetch user by email.
+- Use `GetItem` on `PK=USER#<id>, SK=PROFILE` to fetch by id.
 
 ## Local Scripts
 
@@ -115,6 +143,17 @@ Dev (non-docker) scripts also exist, but Docker is the recommended path for the 
 ## Deployment (high level)
 - Docker on a server: push images, `docker-compose up -d` on the host
 - AWS: use Serverless/Terraform modules in `apps/backend` and `infrastructure` (optional)
+
+## Environment variables
+
+Backend (`apps/backend/serverless.yml`):
+- `TABLE_NAME`: name of the single-table (default `${service}-main-${stage}`)
+- `STAGE`, `REGION`
+
+Local migration (`apps/backend/scripts/migrate-to-single-table.ts`):
+- `SERVICE_NAME`, `STAGE`, `REGION`, `TABLE_NAME`
+- `OLD_USERS_TABLE`, `OLD_DASHBOARD_TABLE` (override autodetected names if needed)
+- `DDB_ENDPOINT` (defaults to `http://localhost:8000` in dev/local)
 
 ## GraphQL Schema (excerpt)
 ```graphql

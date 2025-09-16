@@ -12,7 +12,8 @@
     "deploy:prod": "serverless deploy --stage prod",
     "remove": "serverless remove",
     "logs": "serverless logs -f graphql",
-    "invoke": "serverless invoke"
+    "invoke": "serverless invoke",
+    "migrate:single-table": "tsx scripts/migrate-to-single-table.ts"
   },
   "dependencies": {
     "@apollo/server": "^4.9.5",
