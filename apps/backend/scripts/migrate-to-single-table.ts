@@ -59,7 +59,6 @@ async function ensureMainTable() {
               { AttributeName: 'GSI1SK', KeyType: 'RANGE' },
             ],
             Projection: { ProjectionType: 'ALL' },
-            ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
           },
         ],
         BillingMode: 'PAY_PER_REQUEST',
