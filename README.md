@@ -125,9 +125,5 @@ type Query {
 }
 ```
 
-## Notes
-- Backend normalizes missing user fields (`createdAt`, `updatedAt`, `status`) to avoid nullability errors.
-- Seeds can be re-run safely; DynamoDB Admin lets you inspect data visually.
-
 ## License
 MIT
