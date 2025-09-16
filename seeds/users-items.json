@@ -1,0 +1,28 @@
+{
+  "aws-micro-frontend-backend-users-local": [
+    {
+      "PutRequest": {
+        "Item": {
+          "id": { "S": "1" },
+          "name": { "S": "John Doe" },
+          "email": { "S": "john.doe@example.com" },
+          "status": { "S": "ACTIVE" },
+          "createdAt": { "S": "2025-01-01T10:00:00.000Z" },
+          "updatedAt": { "S": "2025-01-01T10:00:00.000Z" }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "id": { "S": "2" },
+          "name": { "S": "Jane Smith" },
+          "email": { "S": "jane.smith@example.com" },
+          "status": { "S": "ACTIVE" },
+          "createdAt": { "S": "2025-01-02T12:00:00.000Z" },
+          "updatedAt": { "S": "2025-01-02T12:00:00.000Z" }
+        }
+      }
+    }
+  ]
+}

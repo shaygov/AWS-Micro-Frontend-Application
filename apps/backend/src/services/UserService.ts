@@ -1,6 +1,7 @@
 import { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import { docClient } from '../context/context'
+import { mockUsers } from '../data/mockData'
 
 export class UserService {
   private tableName = process.env.USERS_TABLE || 'users'
@@ -12,10 +13,18 @@ export class UserService {
       })
       
       const response = await docClient.send(command)
-      return response.Items || []
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      throw new Error('Failed to fetch users')
+      const items = (response.Items || []) as any[]
+      const normalized = items.map((item) => ({
+        ...item,
+        createdAt: item.createdAt ?? new Date().toISOString(),
+        updatedAt: item.updatedAt ?? new Date().toISOString(),
+        status: item.status ?? 'ACTIVE',
+      }))
+      return normalized
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('DynamoDB not available, using mock data:', message)
+      return mockUsers
     }
   }
 
@@ -27,10 +36,18 @@ export class UserService {
       })
       
       const response = await docClient.send(command)
-      return response.Item || null
-    } catch (error) {
-      console.error('Error fetching user:', error)
-      throw new Error('Failed to fetch user')
+      const item: any = response.Item
+      if (!item) return null
+      return {
+        ...item,
+        createdAt: item.createdAt ?? new Date().toISOString(),
+        updatedAt: item.updatedAt ?? new Date().toISOString(),
+        status: item.status ?? 'ACTIVE',
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('DynamoDB not available, using mock data:', message)
+      return mockUsers.find(user => user.id === id) || null
     }
   }
 
@@ -50,7 +67,7 @@ export class UserService {
         Item: user,
       })
       
-      await docClient.send(command)
+        await docClient.send(command)
       return user
     } catch (error) {
       console.error('Error creating user:', error)
@@ -95,7 +112,13 @@ export class UserService {
       })
       
       const response = await docClient.send(command)
-      return response.Attributes
+      const updated = response.Attributes as any
+      return {
+        ...updated,
+        createdAt: updated?.createdAt ?? new Date().toISOString(),
+        updatedAt: updated?.updatedAt ?? new Date().toISOString(),
+        status: updated?.status ?? 'ACTIVE',
+      }
     } catch (error) {
       console.error('Error updating user:', error)
       throw new Error('Failed to update user')

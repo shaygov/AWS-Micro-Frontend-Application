@@ -30,19 +30,6 @@ const Label = styled.label`
   font-weight: 600;
 `
 
-const Input = styled.input`
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #ecf0f1;
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
-
-  &:focus {
-    outline: none;
-    border-color: #3498db;
-  }
-`
 
 const Select = styled.select`
   width: 100%;

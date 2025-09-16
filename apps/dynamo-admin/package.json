@@ -1,0 +1,12 @@
+{
+  "name": "@aws-app/dynamo-admin",
+  "version": "1.0.0",
+  "description": "DynamoDB Admin Docker Container",
+  "private": true,
+  "scripts": {
+    "start": "dynamodb-admin --port 8001 --host 0.0.0.0"
+  },
+  "dependencies": {
+    "dynamodb-admin": "^4.0.0"
+  }
+}

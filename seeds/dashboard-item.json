@@ -1,0 +1,7 @@
+{
+  "id": { "S": "stats" },
+  "totalUsers": { "N": "3" },
+  "activeUsers": { "N": "2" },
+  "totalOrders": { "N": "45" },
+  "revenue": { "N": "12500.5" }
+}

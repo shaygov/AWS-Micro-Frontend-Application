@@ -30,8 +30,9 @@ export class DashboardService {
 
       await this.updateStats(defaultStats)
       return defaultStats
-    } catch (error) {
-      console.error('DynamoDB not available, using mock data:', error.message)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('DynamoDB not available, using mock data:', message)
       return mockDashboardStats
     }
   }

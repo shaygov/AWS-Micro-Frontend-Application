@@ -8,17 +8,21 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:shell\" \"npm run dev:backend\"",
+    "dev": "concurrently \"npm run dev:shell\" \"npm run dev:backend\" \"npm run dev:dynamo\"",
     "dev:shell": "cd apps/shell && npm run dev",
-    "dev:frontend": "cd apps/frontend && npm run dev",
     "dev:backend": "cd apps/backend && npm run dev",
+    "dev:dynamo": "dynamodb-admin --port 8001 --host 0.0.0.0",
     "build": "npm run build:shell && npm run build:backend",
     "build:shell": "cd apps/shell && npm run build",
-    "build:frontend": "cd apps/frontend && npm run build",
     "build:backend": "cd apps/backend && npm run build",
     "docker:build": "docker-compose build",
-    "docker:up": "docker-compose up",
+    "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
+    "seed:dynamodb": "docker run --rm -v \"${PWD}.Path:/data\" --network awsapp_app-network -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli dynamodb put-item --table-name aws-micro-frontend-backend-dashboard-local --item file:///data/seeds/dashboard-item.json --endpoint-url http://dynamodb:8000 --region us-east-1; docker run --rm -v \"${PWD}.Path:/data\" --network awsapp_app-network -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli dynamodb batch-write-item --request-items file:///data/seeds/users-items.json --endpoint-url http://dynamodb:8000 --region us-east-1",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart",
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
     "terraform:init": "cd infrastructure && terraform init",
     "terraform:plan": "cd infrastructure && terraform plan",
     "terraform:apply": "cd infrastructure && terraform apply"
@@ -26,6 +30,7 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "typescript": "^5.3.3",
-    "@types/node": "^20.10.5"
+    "@types/node": "^20.10.5",
+    "dynamodb-admin": "^4.0.0"
   }
 }

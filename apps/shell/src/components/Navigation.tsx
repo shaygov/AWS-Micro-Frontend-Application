@@ -79,6 +79,30 @@ export function Navigation() {
             Settings
           </NavLink>
         </NavItem>
+        <NavItem>
+          <a 
+            href="http://localhost:8001" 
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block',
+              padding: '1rem 2rem',
+              color: '#ecf0f1',
+              textDecoration: 'none',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#34495e'
+              e.currentTarget.style.color = '#3498db'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#ecf0f1'
+            }}
+          >
+            DynamoDB Admin
+          </a>
+        </NavItem>
       </NavList>
     </Nav>
   )
