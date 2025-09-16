@@ -1,155 +1,106 @@
 # AWS Micro Frontend Application
 
-A modern, scalable micro-frontend application built with React, AWS Serverless, and Docker. This project demonstrates a complete full-stack architecture using micro-frontend patterns, AWS Lambda functions, DynamoDB, and GraphQL.
+A modern, scalable micro-frontend application built with React, GraphQL and Docker. This repo includes a local, fully-containerized stack: frontend shell, backend GraphQL API, DynamoDB Local with persistence, and a DynamoDB Admin UI.
 
 ## Architecture
 
-### Frontend
-- **React 18** with TypeScript
-- **Micro-frontend architecture** for scalability
-- **Apollo Client** for GraphQL integration
-- **Styled Components** for styling
-- **Vite** for fast development and building
+### Frontend (Shell)
+- React 18 + TypeScript (Vite)
+- Apollo Client for GraphQL
+- Styled Components
 
 ### Backend
-- **AWS Lambda** functions written in TypeScript
-- **GraphQL API** with Apollo Server
-- **DynamoDB** for data persistence
-- **AWS CloudWatch** for monitoring and logging
-- **Serverless Framework** for deployment
+- Apollo Server (Node.js/Express)
+- DynamoDB (via AWS SDK v3)
 
 ### DevOps
-- **Docker** containerization for all services
-- **Terraform** for AWS infrastructure as code
-- **Docker Compose** for local development
-- **Monorepo** structure with workspaces
+- Docker Compose (local, multi-container)
+- Optional Terraform/Serverless for cloud deploys (not required for local dev)
 
 ## Project Structure
 
 ```
 ├── apps/
-│   ├── frontend/          # React micro-frontend application
-│   └── backend/           # AWS Lambda GraphQL API
-├── infrastructure/        # Terraform configuration
-├── scripts/              # Development and deployment scripts
-├── docker-compose.yml    # Docker Compose configuration
-└── package.json          # Root package.json with workspaces
+│   ├── shell/              # React shell (served via Vite preview in container)
+│   └── backend/            # GraphQL API
+├── apps/dynamo-admin/      # Dockerized DynamoDB Admin UI
+├── data/dynamodb/          # Persistent DynamoDB Local data (created at runtime)
+├── seeds/                  # Seed JSON files for DynamoDB
+├── docker-compose.yml      # Local stack orchestration
+└── package.json            # Root scripts
 ```
 
 ## Prerequisites
 
 - Node.js 18+
-- Docker and Docker Compose
-- AWS CLI configured
-- Terraform
-- Serverless Framework
+- Docker Desktop (running)
 
-## Quick Start
-
-1. **Clone and setup:**
-   ```bash
-   git clone <repository-url>
-   cd aws-micro-frontend-app
-   chmod +x scripts/setup.sh
-   ./scripts/setup.sh
-   ```
-
-2. **Start development environment:**
-   ```bash
-   # Using Docker Compose (recommended)
-   npm run docker:up
-   
-   # Or using npm scripts
-   npm run dev
-   ```
-
-3. **Access the application:**
-   - Frontend: http://localhost:3000
-   - GraphQL API: http://localhost:4000/graphql
-   - DynamoDB Local: http://localhost:8000
-
-## Development
-
-### Available Scripts
-
-- `npm run dev` - Start both frontend and backend in development mode
-- `npm run dev:frontend` - Start only frontend
-- `npm run dev:backend` - Start only backend
-- `npm run build` - Build both frontend and backend
-- `npm run docker:up` - Start all services with Docker Compose
-- `npm run docker:down` - Stop all Docker services
-
-### Frontend Development
-
-The frontend is a React application with the following features:
-- Dashboard with statistics
-- User management
-- Settings page
-- GraphQL integration
-- Responsive design
-
-### Backend Development
-
-The backend consists of:
-- GraphQL API with Apollo Server
-- DynamoDB integration
-- AWS Lambda functions
-- CloudWatch logging
-
-## Deployment
-
-### Local Development with Docker
+## Quick Start (Docker, recommended)
 
 ```bash
-# Start all services
-docker-compose up --build
+# Build and start the full stack
+docker-compose up -d --build
 
-# Stop services
-docker-compose down
+# Or using npm scripts
+npm run docker:up
 ```
 
-### AWS Deployment
+Endpoints:
+- Frontend (Shell): http://localhost:3000
+- GraphQL API: http://localhost:4000/graphql
+- DynamoDB Local: http://localhost:8000
+- DynamoDB Admin: http://localhost:8001
+- Nginx (optional): http://localhost:80
 
-1. **Deploy backend:**
-   ```bash
-   cd apps/backend
-   serverless deploy --stage dev
-   ```
+### DynamoDB Persistence
+The `dynamodb` service uses a volume: `./data/dynamodb:/home/dynamodblocal/data`. Your tables and items persist across restarts. Avoid `docker-compose down -v` if you want to retain data.
 
-2. **Deploy infrastructure:**
-   ```bash
-   cd infrastructure
-   terraform init
-   terraform plan
-   terraform apply
-   ```
+## Seeding Data
 
-3. **Deploy everything:**
-   ```bash
-   ./scripts/deploy.sh dev us-east-1
-   ```
+We include seeds for the dashboard stats and a couple of users.
 
-## Environment Variables
-
-### Frontend (.env)
-```env
-VITE_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
-VITE_AWS_REGION=us-east-1
-VITE_ENVIRONMENT=development
+1) Ensure `dynamodb` and `dynamo-admin` are running:
+```bash
+docker-compose up -d dynamodb dynamo-admin
 ```
 
-### Backend (.env)
-```env
-NODE_ENV=development
-REGION=us-east-1
-USERS_TABLE=aws-micro-frontend-backend-users-dev
-DASHBOARD_TABLE=aws-micro-frontend-backend-dashboard-dev
+2) From PowerShell, run (Windows path-safe volume mount):
+```powershell
+$P = (Get-Location).Path
+# Dashboard stats
+docker run --rm -v ${P}:/data --network awsapp_app-network `
+  -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy -e AWS_DEFAULT_REGION=us-east-1 `
+  amazon/aws-cli dynamodb put-item `
+  --table-name aws-micro-frontend-backend-dashboard-local `
+  --item file:///data/seeds/dashboard-item.json `
+  --endpoint-url http://dynamodb:8000 --region us-east-1
+
+# Users
+docker run --rm -v ${P}:/data --network awsapp_app-network `
+  -e AWS_ACCESS_KEY_ID=dummy -e AWS_SECRET_ACCESS_KEY=dummy -e AWS_DEFAULT_REGION=us-east-1 `
+  amazon/aws-cli dynamodb batch-write-item `
+  --request-items file:///data/seeds/users-items.json `
+  --endpoint-url http://dynamodb:8000 --region us-east-1
 ```
 
-## API Documentation
+3) Verify in DynamoDB Admin: http://localhost:8001
 
-### GraphQL Schema
+## Local Scripts
 
+In the root `package.json`:
+- `npm run docker:build` – build containers
+- `npm run docker:up` – start all services in detached mode
+- `npm run docker:down` – stop all services
+- `npm run docker:logs` – follow all logs
+- `npm run docker:restart` – restart services
+
+Dev (non-docker) scripts also exist, but Docker is the recommended path for the full local stack.
+
+## Deployment (high level)
+- Docker on a server: push images, `docker-compose up -d` on the host
+- AWS: use Serverless/Terraform modules in `apps/backend` and `infrastructure` (optional)
+
+## GraphQL Schema (excerpt)
 ```graphql
 type User {
   id: ID!
@@ -172,32 +123,11 @@ type Query {
   user(id: ID!): User
   dashboardStats: DashboardStats!
 }
-
-type Mutation {
-  createUser(input: CreateUserInput!): User!
-  updateUser(id: ID!, input: UpdateUserInput!): User!
-  deleteUser(id: ID!): Boolean!
-}
 ```
 
-## Monitoring
-
-- **CloudWatch Logs**: Lambda function logs
-- **CloudWatch Metrics**: Performance and error metrics
-- **DynamoDB Metrics**: Database performance
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+## Notes
+- Backend normalizes missing user fields (`createdAt`, `updatedAt`, `status`) to avoid nullability errors.
+- Seeds can be re-run safely; DynamoDB Admin lets you inspect data visually.
 
 ## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-For questions and support, please open an issue in the repository.
+MIT
