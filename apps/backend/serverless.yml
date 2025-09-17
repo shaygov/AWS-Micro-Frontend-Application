@@ -2,11 +2,31 @@ service: aws-micro-frontend-backend
 
 frameworkVersion: '3'
 
+package:
+  patterns:
+    - dist/**
+    - node_modules/**
+    - package.json
+    - package-lock.json
+  excludeDevDependencies: false
+
 provider:
   name: aws
   runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
+  httpApi:
+    cors:
+      allowedOrigins:
+        - '*'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - OPTIONS
+      allowCredentials: false
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
@@ -37,7 +57,12 @@ functions:
       - http:
           path: /graphql
           method: ANY
-          cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: false
     environment:
       GRAPHQL_ENDPOINT: https://${self:service}-${self:provider.stage}.${self:provider.region}.amazonaws.com/graphql
 

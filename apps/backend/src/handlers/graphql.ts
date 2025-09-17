@@ -2,6 +2,7 @@ import { ApolloServer } from '@apollo/server'
 import { expressMiddleware } from '@apollo/server/express4'
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 import express from 'express'
+import serverlessHttp from 'serverless-http'
 import cors from 'cors'
 import { createServer } from 'http'
 import { typeDefs } from '../schema/typeDefs'
@@ -36,4 +37,5 @@ async function startServer() {
 
 startServer()
 
-export const handler = app
+// Export the Lambda handler expected by Serverless
+export const handler = serverlessHttp(app)
